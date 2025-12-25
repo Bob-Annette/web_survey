@@ -16,6 +16,14 @@ from libs.tidb_ops import TiDBOps
 # =========================
 # Config
 # =========================
+TIDB_HOST = st.secrets.get("TIDB_HOST", "gateway01.eu-central-1.prod.aws.tidbcloud.com")
+TIDB_PORT = int(st.secrets.get("TIDB_PORT", 4000))
+TIDB_USER = st.secrets.get("TIDB_USER", "2b1cKMtrfhzxjYj.root")
+TIDB_DATABASE = st.secrets.get("TIDB_DATABASE", "github_sample")
+
+LOCK_TTL_SECONDS = int(st.secrets.get("LOCK_TTL_SECONDS", 7200))
+QUESTIONS_PER_PAGE = int(st.secrets.get("QUESTIONS_PER_PAGE", 20))
+
 def validate_sid(sid: str) -> bool:
     return sid.isdigit() and len(sid) == 10
 
@@ -141,7 +149,7 @@ if stage == "login":
 
     with col2:
         st.info(
-            f"TiDB：{TIDB_HOST}:{TIDB_PORT} / {TIDB_DATABASE}\n\n"
+            # f"TiDB：{TIDB_HOST}:{TIDB_PORT} / {TIDB_DATABASE}\n\n"
             f"- 领取使用数据库事务行锁，保证高并发不重复领取\n"
             f"- TTL：{LOCK_TTL_SECONDS//60} 分钟未续租会自动回收\n"
             f"- 每页显示题数：{QUESTIONS_PER_PAGE}"
