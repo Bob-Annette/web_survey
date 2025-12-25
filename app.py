@@ -16,10 +16,10 @@ import streamlit as st
 # Config (from secrets.toml preferred; with sane defaults)
 # =========================================================
 # BANK_DIR: banks 根目录（会递归扫描 banks/**/questionnaire_*.jsonl）
-BANK_DIR = Path(st.secrets.get("BANK_DIR", "banks"))
+BANK_DIR = Path(st.secrets.get("BANK_DIR", "streamlit_annotator/data/banks"))
 
 # 锁超时（秒）：意外关页/断网后，锁多久自动回收
-LOCK_TTL_SECONDS = int(st.secrets.get("LOCK_TTL_SECONDS", 1 * 10 * 60))  # 2h
+LOCK_TTL_SECONDS = int(st.secrets.get("LOCK_TTL_SECONDS", 2 * 60 * 60))  # 2h
 
 # 每页显示多少题（防止一次渲染太多卡顿）
 QUESTIONS_PER_PAGE = int(st.secrets.get("QUESTIONS_PER_PAGE", 20))
