@@ -16,35 +16,32 @@ from libs.tidb_ops import TiDBOps
 # =========================
 # Config
 # =========================
-TIDB_HOST = st.secrets.get("TIDB_HOST", "gateway01.eu-central-1.prod.aws.tidbcloud.com")
-TIDB_PORT = int(st.secrets.get("TIDB_PORT", 4000))
-TIDB_USER = st.secrets.get("TIDB_USER", "2b1cKMtrfhzxjYj.root")
-TIDB_DATABASE = st.secrets.get("TIDB_DATABASE", "github_sample")
-
-LOCK_TTL_SECONDS = int(st.secrets.get("LOCK_TTL_SECONDS", 7200))
-QUESTIONS_PER_PAGE = int(st.secrets.get("QUESTIONS_PER_PAGE", 20))
-
-# 密码与 CA 走环境变量（不要写进仓库）
-TIDB_PASSWORD = os.environ.get("TIDB_PASSWORD", "")
-TIDB_CA = os.environ.get("TIDB_CA", "") or None
-
-
 def validate_sid(sid: str) -> bool:
     return sid.isdigit() and len(sid) == 10
 
 
 @st.cache_resource
-def get_db() -> TiDBOps:
-    if not TIDB_PASSWORD:
-        raise RuntimeError("Missing env var TIDB_PASSWORD. Please set it before running Streamlit.")
-    ca_path = str(Path(TIDB_CA).resolve()) if TIDB_CA else None
+def get_db():
+    # 统一从 st.secrets 读取（云端/本地都通用）
+    host = st.secrets["TIDB_HOST"]
+    port = int(st.secrets["TIDB_PORT"])
+    user = st.secrets["TIDB_USER"]
+    database = st.secrets["TIDB_DATABASE"]
+    password = st.secrets["TIDB_PASSWORD"]
+
+    ca_path = None
+    ca_pem = st.secrets.get("TIDB_CA_PEM", "")
+    if ca_pem.strip():
+        ca_path = Path("/tmp/tidb_ca.pem")
+        ca_path.write_text(ca_pem, encoding="utf-8")
+
     return TiDBOps(
-        host=TIDB_HOST,
-        port=TIDB_PORT,
-        user=TIDB_USER,
-        password=TIDB_PASSWORD,
-        database=TIDB_DATABASE,
-        ca_path=ca_path,
+        host=host,
+        port=port,
+        user=user,
+        password=password,
+        database=database,
+        ca_path=str(ca_path) if ca_path else None,
     )
 
 
