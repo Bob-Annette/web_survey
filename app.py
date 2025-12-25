@@ -114,8 +114,8 @@ def start_doing_from_row(row):
 # =========================
 # UI
 # =========================
-st.set_page_config(page_title="问卷标注", layout="wide")
-st.title("问卷标注系统")
+st.set_page_config(page_title="问卷标注（TiDB）", layout="wide")
+st.title("问卷标注系统（Streamlit + TiDB）")
 
 if "stage" not in st.session_state:
     st.session_state["stage"] = "login"
@@ -149,7 +149,7 @@ if stage == "login":
 
     with col2:
         st.info(
-            # f"TiDB：{TIDB_HOST}:{TIDB_PORT} / {TIDB_DATABASE}\n\n"
+            f"TiDB：{TIDB_HOST}:{TIDB_PORT} / {TIDB_DATABASE}\n\n"
             f"- 领取使用数据库事务行锁，保证高并发不重复领取\n"
             f"- TTL：{LOCK_TTL_SECONDS//60} 分钟未续租会自动回收\n"
             f"- 每页显示题数：{QUESTIONS_PER_PAGE}"
@@ -191,7 +191,7 @@ elif stage == "doing":
     st.subheader(f"正在填写：{bank} / {Path(rel_path).name}")
     st.caption(f"学号：{sid}   |   问卷ID：{qid}")
 
-    top1, top2 = st.columns([1, 3])
+    top1, _ = st.columns([1, 3])
     with top1:
         if st.button("放弃并退出"):
             db.abandon(qid=qid, sid=sid)
@@ -219,18 +219,34 @@ elif stage == "doing":
             prompt = q.get("prompt", "")
             opts = q.get("options", [])
 
+            # ====== 题目区：显示完整内容 ======
             st.markdown("---")
             st.markdown(f"### 题目 {i+1}")
-            st.text(prompt)
 
+            # 题干
+            if prompt:
+                st.write(prompt)
+
+            # 选项完整文本放在题目中展示（避免下拉框截断）
             opt_map = {o.get("key"): o.get("text", "") for o in opts}
-            keys = [k for k in ["A", "B", "C"] if k in opt_map]
-            labels = [f"{k}：{opt_map.get(k,'')}" for k in keys]
-            choices = ["（未选择）"] + labels
+            a_text = opt_map.get("A", "")
+            b_text = opt_map.get("B", "")
+            c_text = opt_map.get("C", "")  # 通常是“差不多”
 
-            cur = answers.get(q_qid)
-            cur_label = f"{cur}：{opt_map.get(cur,'')}" if cur in keys else "（未选择）"
-            index = choices.index(cur_label) if cur_label in choices else 0
+            # 用 markdown + st.write 展示长文本（自动换行）
+            st.markdown("**选项 A：**")
+            st.write(a_text if a_text else "（空）")
+
+            st.markdown("**选项 B：**")
+            st.write(b_text if b_text else "（空）")
+
+            st.markdown("**选项 C：**")
+            st.write(c_text if c_text else "（空）")
+
+            # ====== 下拉框：只显示 A/B/C（+ 未选择） ======
+            choices = ["（未选择）", "A", "B", "C"]
+            cur = answers.get(q_qid)  # "A"/"B"/"C" or None
+            index = choices.index(cur) if cur in ["A", "B", "C"] else 0
 
             sel = st.selectbox(
                 "请选择：",
@@ -242,7 +258,7 @@ elif stage == "doing":
             if sel == "（未选择）":
                 answers.pop(q_qid, None)
             else:
-                answers[q_qid] = sel.split("：", 1)[0]
+                answers[q_qid] = sel
 
         st.markdown("---")
         answered_after = sum(1 for q in questions if q.get("qid") in answers)
@@ -266,7 +282,6 @@ elif stage == "doing":
         st.rerun()
 
     if submit_clicked:
-        # 缺题检查：弹出对话框并列出未做题号
         missing_idx = []
         for i, q in enumerate(questions):
             q_qid = q.get("qid")
@@ -287,7 +302,6 @@ elif stage == "doing":
                 st.session_state["stage"] = "login"
                 st.rerun()
 
-            # 提交成功：进入完成页（保留 sid）
             clear_questionnaire_state(keep_sid=True)
             st.session_state["stage"] = "finished"
             st.rerun()
